@@ -1,6 +1,6 @@
 {Robot, Adapter, EnterMessage, LeaveMessage, TextMessage} = require('hubot')
 
-auth = require "../src/qqauth"
+auth = require "../src/qqauth-qrcode"
 api  = require "../src/qqapi"
 QQBot= require "../src/qqbot"
 defaults = require "../src/defaults"
@@ -35,13 +35,13 @@ class QQHubotAdapter extends Adapter
       process.exit(1)
 
     # TODO: login failed callback
-    @login_qq skip_login,options,(cookies,auth_info)=>
-      @qqbot = new QQBot(cookies,auth_info,options)
+    @login_qq skip_login,options, (cookies,auth_info)=>
+      @qqbot = new QQBot(cookies, auth_info, options)
       @qqbot.update_buddy_list (ret,error)=>
-          @robot.logger.info '√ buddy list fetched' if ret
-      @qqbot.listen_group options.groupname , (@group,error)=>
+          @robot.logger.info '√ Buddy list fetched' if ret
+      @qqbot.listen_group options.groupname, (@group,error)=>
 
-        @robot.logger.info "enter long poll mode, have fun"
+        @robot.logger.info "Enter long poll mode, have fun"
         @qqbot.runloop()
         @emit "connected"
 
@@ -60,8 +60,8 @@ class QQHubotAdapter extends Adapter
     if skip_login
       cookies = defaults.data 'qq-cookies'
       auth_info = defaults.data 'qq-auth'
-      @robot.logger.info "skip login",auth_info
-      callback(cookies , auth_info )
+      @robot.logger.info "skip login", auth_info
+      callback(cookies, auth_info )
     else
       auth.login options , (cookies,auth_info)=>
         if process.env.HUBOT_QQ_DEBUG?
@@ -69,7 +69,7 @@ class QQHubotAdapter extends Adapter
           defaults.data 'qq-auth'   , auth_info
           defaults.save()
 
-        callback(cookies,auth_info)
+        callback(cookies, auth_info)
 
 
 exports.use = (robot) ->

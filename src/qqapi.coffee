@@ -3,8 +3,6 @@
   - 使用前需要设置 cookies()
 ###
 
-
-
 all_cookies = []
 fs = require 'fs'
 jsons = JSON.stringify
@@ -14,8 +12,6 @@ log   = new (require 'log')('debug')
 msg_id = 43690001 # 随机消息id，每次操作后需要增加
 # 49760001
 
-
-
 # 设置client cookie
 #
 cookies = (cookie)->
@@ -23,7 +19,6 @@ cookies = (cookie)->
     all_cookies = cookie
     client.global_cookies(all_cookies)
   return all_cookies
-
 
 ###
 # 长轮询，默认一分钟
@@ -34,18 +29,17 @@ cookies = (cookie)->
 long_poll = (auth_opts, callback) ->
   log.debug "polling..."
   [clientid, psessionid, ptwebqq, uin, vfwebqq] = [auth_opts.clientid, auth_opts.psessionid, auth_opts.ptwebqq, auth_opts.uin, auth_opts.vfwebqq]
-  url = "http://d.web2.qq.com/channel/poll2"
+  url = "http://d1.web2.qq.com/channel/poll2"
   r =
-    ptwebqq: "#{ptwebqq}"
-    clientid: "#{clientid}"
-    psessionid: "#{psessionid}"
+    ptwebqq: ptwebqq
+    clientid: clientid
+    psessionid: psessionid
     key: ""
   params =
     r: jsons r
-  log.debug "params: #{params.r}"
-  client.post {url:url} , params , (ret,e)->
+  client.post {url:url}, params, (ret,e)->
     need_next_runloop = callback(ret,e)
-    long_poll( auth_opts , callback ) if need_next_runloop
+    long_poll(auth_opts, callback) if need_next_runloop
 
 
 # http://0.web.qstatic.com/webqqpic/pubapps/0/50/eqq.all.js
@@ -87,7 +81,7 @@ get_buddy_list = (auth_opts, callback)->
   r =
     hash: hash_func(opt.uin, opt.ptwebqq)
     vfwebqq: opt.vfwebqq
-  client.post {url:url} , {r:jsons(r)} , (ret,e )->
+  client.post {url:url} , {r:jsons(r)} , (ret, e)->
     callback(ret,e)
 
 #  @param tuin:      uin or gid
@@ -113,13 +107,13 @@ get_friend_uin2 = (tuin, type, auth_opts, callback)->
 #  @param callback: ret, e
 #  @return ret retcode 0
 send_msg_2buddy = (to_uin , msg , auth_opts ,callback)->
-  url = "http://d.web2.qq.com/channel/send_buddy_msg2"
+  url = "http://d1.web2.qq.com/channel/send_buddy_msg2"
   opt = auth_opts
   r =
     to: to_uin
     face: 0
     msg_id: msg_id++
-    clientid: "#{opt.clientid}"
+    clientid: opt.clientid
     psessionid: opt.psessionid
     content: jsons ["#{msg}", ["font", {name:"宋体", size:"10", style:[0,0,0], color:"000000" }] ]
 
@@ -142,17 +136,17 @@ send_msg_2buddy = (to_uin , msg , auth_opts ,callback)->
 send_msg_2sess = (to_gid , to_uin , msg , auth_opts ,callback)->
   opt = auth_opts
 
-  url = "http://d.web2.qq.com/channel/get_c2cmsg_sig2?id="+to_gid+"&to_uin="+to_uin+"&clientid="+opt.clientid+"&psessionid="+opt.psessionid+"&service_type=0&t="+new Date().getTime()
+  url = "http://d1.web2.qq.com/channel/get_c2cmsg_sig2?id="+to_gid+"&to_uin="+to_uin+"&clientid="+opt.clientid+"&psessionid="+opt.psessionid+"&service_type=0&t="+new Date().getTime()
 
   client.get url , (ret,e) ->
     if !e
-      url = "http://d.web2.qq.com/channel/send_sess_msg2"
+      url = "http://d1.web2.qq.com/channel/send_sess_msg2"
 
       r =
       to: to_uin
       face: 594
       msg_id: msg_id++
-      clientid: "#{opt.clientid}"
+      clientid: opt.clientid
       psessionid: opt.psessionid
       group_sig: ret.result.value
       content: jsons ["#{msg}", ["font", {name:"宋体", size:"10", style:[0,0,0], color:"000000" }] ]
@@ -201,13 +195,13 @@ get_group_member = (group_code, auth_opts, callback)->
 #  @param callback: ret, e
 #  @return ret retcode 0
 send_msg_2group = (gid, msg , auth_opts, callback)->
-  url = 'http://d.web2.qq.com/channel/send_qun_msg2'
+  url = 'http://d1.web2.qq.com/channel/send_qun_msg2'
   opt = auth_opts
   r =
     group_uin:  gid
     content:    jsons ["#{msg}" , ["font", {name:"宋体", size:10, style:[0,0,0], color:"000000" }] ]
     face: 573
-    clientid:   "#{opt.clientid}"
+    clientid:   opt.clientid
     msg_id:     msg_id++
     psessionid: opt.psessionid
   params =
@@ -233,7 +227,7 @@ get_discuss_list = (auth_opts, callback)->
 
 # @discuss_id 讨论组id (did)
 get_discuss_member = (discuss_id, auth_opts, callback)->
-  url = "http://d.web2.qq.com/channel/get_discu_info"
+  url = "http://d1.web2.qq.com/channel/get_discu_info"
   params =
     did: discuss_id
     clientid: auth_opts.clientid
@@ -243,13 +237,13 @@ get_discuss_member = (discuss_id, auth_opts, callback)->
   client.get url, params , callback
 
 send_msg_2discuss = (discuss_id, msg, auth_opts, callback)->
-  url = "http://d.web2.qq.com/channel/send_discu_msg2"
+  url = "http://d1.web2.qq.com/channel/send_discu_msg2"
   opt = auth_opts
   r =
     did:  "#{discuss_id}"   #字符串
     msg_id:     msg_id++
     face: 573
-    clientid:   "#{opt.clientid}"
+    clientid:   opt.clientid
     psessionid: opt.psessionid
     content:    jsons ["#{msg}" , ["font", {name:"宋体", size:10, style:[0,0,0], color:"000000" }] ]
   params =

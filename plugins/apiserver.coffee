@@ -2,18 +2,18 @@
  QQBot Api Plugin
  ----------------
  通过HTTP API 方式和QQBot通信
- 
+
  配置依赖：config.yaml
    api_port:  3000
    api_token: '' 设置为 '' 为不需要密码
- 
+
  请求：GET/POST 方法都支持， 参数中token为必备字段
    exp:  GET api/reload_plugin?token=values
 
- 返回：JSON { err:0 , msg:'error msg' } 
+ 返回：JSON { err:0 , msg:'error msg' }
    err:0 为成功响应，否则请看错误信息
-  
- 
+
+
  接口：
  ----------------
   1. 发送消息 /send
@@ -48,8 +48,13 @@ processPost = (request, response, callback) ->
         request.connection.destroy();
 
     request.on 'end', ->
-      data = querystring.parse(queryData)
-      callback(data)
+      if request.headers
+        contentType = request.headers['content-type']
+        if contentType
+          if contentType.indexOf('json') > 0
+            callback(JSON.parse(queryData))
+          else if contentType.indexOf('form-urlencoded') > 0
+            callback(querystring.parse(queryData))
 
     request.on 'error', (error)->
       callback(null, error)
@@ -67,7 +72,7 @@ class APIServer
     @http_server.close() if @http_server
     @http_server = null
     log.info "aip server stoped"
-    
+
   create_server: (port)->
     server = http.createServer (req, res) =>
       log.debug '[api]' , req.url
@@ -83,8 +88,8 @@ class APIServer
     server.listen port
     log.info 'api server started at port',port
     return server
-  
-  
+
+
   handle_request: (req,res,path,params)->
     res.endjson = (dict={})->
       ret_dict =
@@ -103,8 +108,12 @@ class APIServer
     func =
       switch path
         when '/stdin' then @on_stdin(req, res, params)
+        when '/listbuddy' then @on_listbuddy(req, res, params)
+        when '/listgroup' then @on_listgroup(req, res, params)
+        when '/listdiscuss' then @on_listdiscuss(req, res, params)
         when '/send'  then @on_sendmsg(req, res, params)
         when '/reload'then @on_reload_plugin(req, res, params)
+        when '/quit' then @on_quit(req, res, params)
         else res.endjson {err:404,msg:'request not fits'}
 
 
@@ -116,29 +125,90 @@ class APIServer
 
   on_reload_plugin : (req,res,params)->
     res.endjson {err:1, msg:"method unimplemented"}
-  
+
+  on_quit: (req, res, params) ->
+    if req.headers.host.indexOf('localhost') >= 0
+      res.endjson(
+        err: 0
+        msg: "ok, qqbot shutdown now."
+      )
+      console.log("qqbot gracefully shutdown now.\n")
+      process.exit(0)
+    else
+      res.endjson(
+        err: 403
+        msg: "only accept quit command from localhost."
+      )
+
+  on_listbuddy: (req, res, params) ->
+    bot = @qqbot
+    bot.update_buddy_list((ret, e) ->
+      res.endjson(bot.buddy_info)
+    )
+
+  on_listgroup: (req, res, params) ->
+    bot = @qqbot
+    bot.update_group_list((ret, e) ->
+      res.endjson(bot.group_info)
+    )
+
+  on_relogin: (req, res, params) ->
+    bot = @qqbot
+    bot.relogin((ret, e) ->
+      res.endjson(bot.ret)
+    )
+
+  on_listdiscuss: (req, res, params) ->
+    bot = @qqbot
+    bot.update_dgroup_list((ret, e) ->
+      res.endjson(bot.dgroup_info)
+    )
+
+
   on_sendmsg : (req,res,params)->
     log.info "will send #{params.type} #{params.to} : #{params.msg}"
+    bot = @qqbot
     if params.type == 'buddy'
-      msg =  "unimplement type #{params.type}"
-      log.warning msg
-      res.endjson {err:100,msg:msg}
-      
+      if parseInt(params.to) > 0
+        bot.get_user_uin params.to, (err, uin) ->
+          bot.send_message uin, params.msg, (ret, e) ->
+            resp_ret = {result: ret}
+            if e
+              resp_ret.err = 1
+              resp_ret.msg = "#{e}"
+            res.endjson(resp_ret)
+      else
+        user = bot.get_user_ex({nick: params.to})
+        bot.send_message user, params.msg, (ret, e) ->
+          resp_ret = {result: ret}
+          if e
+            resp_ret.err = 1
+            resp_ret.msg = "#{e}"
+          res.endjson(resp_ret)
     else if params.type == 'group'
-      group = @qqbot.get_group {name:params.to}
-      @qqbot.send_message_to_group group, params.msg, (ret,e)->
-        resp_ret = {result:ret}
-        if e
-          resp_ret.err = 1
-          resp_ret.msg = "#{e}"
-        res.endjson resp_ret
+      if parseInt(params.to) > 0
+        bot.get_group_gid params.to, (err, gid) ->
+          bot.send_message_to_group gid, params.msg, (ret, e) ->
+            resp_ret = {result:ret}
+            if e
+              resp_ret.err = 1
+              resp_ret.msg = "#{e}"
+            res.endjson resp_ret
+      else
+        group = bot.get_group {name:params.to}
+        bot.send_message_to_group group, params.msg, (ret,e)->
+          resp_ret = {result:ret}
+          if e
+            resp_ret.err = 1
+            resp_ret.msg = "#{e}"
+          res.endjson resp_ret
 
     else if params.type == 'discuss'
-      discuss_group = @qqbot.get_dgroup {name:params.to}
+      discuss_group = bot.get_dgroup {name:params.to}
       unless discuss_group
         res.endjson {err:501, msg:"can't find discuss by name #{params.to}"}
         return
-      @qqbot.send_message_to_discuss discuss_group.did, params.msg, (ret,e)->
+      bot.send_message_to_discuss discuss_group.did, params.msg, (ret,e)->
         resp_ret = {result:ret}
         if e
           resp_ret.err = 1
@@ -149,16 +219,16 @@ class APIServer
     else
       msg =  "unimplement type #{params.type}"
       log.warning msg
-      res.endjson {err:100,msg:msg}
+      res.endjson {err:100, msg:msg}
 
 
 ################################################
 # QQBot Plugin 接口
 api_server = null
-exports.init = (qqbot)->  
+exports.init = (qqbot)->
   api_server = new APIServer(qqbot)
   api_server.start();
 
 exports.stop = (qqbot)->
   api_server.stop()
-    
+

@@ -1,4 +1,4 @@
-auth = require './qqauth'
+auth = require './qqauth-qrcode'
 api = require './qqapi'
 Log = require 'log'
 Request = require 'request'
@@ -51,6 +51,12 @@ class QQBot
     users = @buddy_info.info.filter (item)-> item.uin == uin
     users.pop()
 
+  get_user_ex: (options) ->
+    users = @buddy_info.info.filter (item) ->
+      for key, value of options
+        return item[key] == value
+    user.pop()
+
   # 获取群用户信息
   get_user_ingroup: (uin, gid)->
     info = @groupmember_info[gid]
@@ -61,17 +67,17 @@ class QQBot
   # @options {key:value}
   # @return {gid,code,name,flag}
   get_group: (options)->
-      groups = @group_info.gnamelist.filter (item)->
-          for key ,value of options
-              return item[key] == value
-      groups.pop()
+    groups = @group_info.gnamelist.filter (item)->
+        for key, value of options
+            return item[key] == value
+    groups.pop()
 
   # @options {key:value}
   # @return {name, did}
   get_dgroup: (options)->
     try
       groups = @dgroup_info.dnamelist.filter (item)->
-        for key,value of options
+        for key, value of options
           return item[key] == value
       groups.pop()
 
@@ -87,16 +93,54 @@ class QQBot
   # @callback {ret:bool,error}
   update_group_list: (callback)->
     @api.get_group_list @auth, (ret , e)=>
-        log.error e  if e
-        @group_info = ret.result if ret.retcode == 0
-        callback( ret.retcode == 0, e || 'retcode isnot 0' ) if callback
+      if e
+        log.error e
+        if callback
+          callback false, e
+      else
+        if ret.retcode == 0
+          @group_info = ret.result
+          info = @group_info.gnamelist
+          n = info.length
+          if n > 0
+            for inf in info
+              @get_group_account(inf.gid, (err, account) ->
+                inf.account = account if !err
+                callback((not err), err) if (--n <= 0) and callback
+              )
+          else
+            callback true, 'ok' if callback
+        else
+          callback false, 'retcode isnot 0' if callback
+      # log.error e  if e
+      # @group_info = ret.result if ret.retcode == 0
+      # callback( ret.retcode == 0, e || 'retcode is not 0' ) if callback
 
   # 获取好友列表
   # @callback (ret:bool, error)
   update_buddy_list: (callback)->
-      @api.get_buddy_list @auth , (ret,e)=>
-          @buddy_info = ret.result if ret.retcode == 0
-          callback( ret.retcode == 0, e || 'retcode isnot 0' ) if callback
+      @api.get_buddy_list @auth, (ret,e)=>
+        if e
+          log.error e
+          if callback
+            callback false, e
+        else
+          if ret.retcode == 0
+            @buddy_info = ret.result
+            info = @buddy_info.info
+            n = info.length
+            if n > 0
+              for inf in info
+                @get_user_account(inf.uin, (err, account) ->
+                  inf.account = account if !err
+                  callback((not err), err) if (--n <= 0) and callback
+                )
+            else
+              callback true, 'ok' if callback
+          else
+            callback false, 'retcode isnot 0' if callback
+          # @buddy_info = ret.result if ret.retcode == 0
+          # callback( ret.retcode == 0, e || 'retcode is not 0' ) if callback
 
   # 更新群成员
   # @options {key:value} or group obj
@@ -106,7 +150,7 @@ class QQBot
     @api.get_group_member group.code , @auth , (ret,e)=>
         if ret.retcode == 0
           @save_group_member(group,ret.result)
-        callback(ret.retcode == 0 , e) if callback
+        callback(ret.retcode == 0, e) if callback
 
   update_dgroup_list: (callback)->
     log.info "update discuss group list"
@@ -123,7 +167,7 @@ class QQBot
       if ret.retcode == 0
         @dgroupmember_info[did] = ret.result
         # log.info jsons ret.result
-      callback(ret.retcode == 0 , e) if callback
+      callback(ret.retcode == 0, e) if callback
 
 
   # 更新所有群成员
@@ -144,14 +188,14 @@ class QQBot
   # @callback (ret?,actions) 是否全部更新成功 , actions每个状态
   update_all_members: (callback)->
     # [0,0] -> [finished,success]
-    actions= buddy:[0,0],group:[0,0],groupmember:[0,0]
+    actions= buddy:[0,0], group:[0,0], groupmember:[0,0]
     check = ->
       finished = successed = 0 ; all = Object.keys(actions).length
       stats = (value for key,value of actions)
       for item in stats
         finished += item[0] ; successed += item[1]
       log.debug("updating all: all #{all} finished #{finished} success #{successed}")
-      callback(successed==all) if finished == all
+      callback(successed == all) if finished == all
 
     # fetching...
     log.info 'fetching buddy list...'
@@ -195,7 +239,7 @@ class QQBot
       call_callbacks = (err, account)->
         func err, account for func in callbacks
 
-      log.info "fetching account info: type#{type}, uin#{uin}"
+      log.info "fetching account info, type:#{type}, uin:#{uin}"
       @api.get_friend_uin2 uin, type, @auth, (ret, e)=>
         delete table[key]
 
@@ -207,7 +251,7 @@ class QQBot
           result = table[key] = ret.result
 
           # 不知道为什么，群号码总要减掉这个数才正确……
-          result.account -= 3890000000 if type == 4
+          # result.account -= 3890000000 if type == 4
 
           account = result.account
           account_key = "acc" + account
@@ -306,7 +350,7 @@ class QQBot
   # @callback (ret,e)
   send_message: (uin_or_user, content, callback)->
     uin = if typeof uin_or_user is 'object' then uin_or_user.uin else uin_or_user
-    log.info "send msg #{content} to user#{uin}"
+    log.info "send msg:\"#{content}\" to user:#{uin}"
     api.send_msg_2buddy uin, content, @auth, callback
 
   # 发送群消息
@@ -314,11 +358,11 @@ class QQBot
   # @callback (ret,e)
   send_message_to_group: (gid_or_group, content, callback)->
     gid = if typeof gid_or_group is 'object' then gid_or_group.gid else gid_or_group
-    log.info "send msg #{content} to group#{gid}"
-    api.send_msg_2group  gid , content , @auth, callback
+    log.info "send msg:\"#{content}\" to group:#{gid}"
+    api.send_msg_2group  gid, content, @auth, callback
 
   send_message_to_discuss: (did, content, callback)->
-    log.info "send msg #{content} to discuss#{did}"
+    log.info "send msg:\"#{content}\" to discuss:#{did}"
     api.send_msg_2discuss did, content, @auth, callback
 
   # 自杀
@@ -342,12 +386,14 @@ class QQBot
   handle_poll_responce: (resp,e)->
     log.error "poll with error #{e}" if e
     code = if resp then resp.retcode else -1
+    log.debug(resp)
     switch code
       when -1  then log.error "resp is null, error on parse ret",resp
-      when 0   then @_handle_poll_event(event) for event in resp.result
+      when 0   then @_handle_poll_event(event) for event in resp.result if resp.result
       when 102 then 'nothing happened, waiting for next loop'
       when 116 then @_update_ptwebqq(resp)
       when 103,121 then @die("登录异常 #{code}",resp)
+      when 100012 then @relogin()
       else log.debug resp
 
   ###
@@ -357,25 +403,31 @@ class QQBot
   relogin: (callback)->
     log.info "relogin..."
     auth.cookies @cookies
+    self = @
 
-    auth.login_token @auth.clientid, @auth.psessionid, (ret,client_id,ptwebqq) =>
-      if ret.retcode != 0
-        log.error "relogin failed"
-        log.info ret
-        callback(false) if callback
-        return
-
-      log.debug 'before',@auth
-      auth_new =
-        psessionid: ret.result.psessionid
-        clientid  : client_id
-        ptwebqq   : ptwebqq
-        uin       : ret.result.uin
-        vfwebqq   : ret.result.vfwebqq
-
-      @auth = auth_new
-      log.debug 'after',@auth
+    auth.auto_login self.auth.ptwebqq, (cookies, auth_info) ->
+      self.auth = auth_info
+      log.debug 'after', self.auth
       callback(true) if callback
+
+    # auth.login_token @auth.clientid, @auth.psessionid, (ret,client_id,ptwebqq) =>
+    #   if ret.retcode != 0
+    #     log.error "relogin failed"
+    #     log.info ret
+    #     callback(false) if callback
+    #     return
+
+    #   log.debug 'before',@auth
+    #   auth_new =
+    #     psessionid: ret.result.psessionid
+    #     clientid  : client_id
+    #     ptwebqq   : ptwebqq
+    #     uin       : ret.result.uin
+    #     vfwebqq   : ret.result.vfwebqq
+
+    #   @auth = auth_new
+    #   log.debug 'after',@auth
+    #   callback(true) if callback
 
 
   # 更新token ptwebqq的值，返回值{116 ,p=token}
@@ -389,7 +441,7 @@ class QQBot
         @_on_message(event, event.poll_type)
       when 'input_notify'  then ""
       when 'buddies_status_change' then ""
-      else log.warning "unimplemented event",event.poll_type , "content: ", jsons event
+      else log.warning "unimplemented event", event.poll_type, "content: ", jsons event
 
   _on_message : (event, msg_type)->
     value = event.value
@@ -405,7 +457,7 @@ class QQBot
       msg.group_code = value.group_code
       msg.from_uin = value.send_uin # 这才是用户,group消息中 from_uin 是gid
       msg.from_group = @get_group( {gid:msg.from_gid} )
-      msg.from_user  = @get_user_ingroup( msg.from_uin ,msg.from_gid )
+      msg.from_user  = @get_user_ingroup( msg.from_uin, msg.from_gid )
       # 更新
       @update_group_list unless msg.from_group
       @update_group_member {gid:msg.from_gid} unless msg.from_user
@@ -417,7 +469,7 @@ class QQBot
       msg.from_did = value.did
       msg.from_uin = value.send_uin
       msg.from_dgroup = @get_dgroup({did:value.did})
-      msg.from_user = @get_user_in_dgroup(msg.from_uin,msg.from_did)
+      msg.from_user = @get_user_in_dgroup(msg.from_uin, msg.from_did)
 
       # 更新
       @update_dgroup_list() unless msg.from_dgroup
@@ -455,7 +507,7 @@ class QQBot
         @reply_message(msg,content) unless replied
         replied = true
 
-    @dispatcher.dispatch(msg.content ,reply, @ , msg)
+    @dispatcher.dispatch(msg.content, reply, @, msg)
 
 
 
@@ -483,16 +535,16 @@ class QQBot
  - on_message (content,send_fun, bot , message_info) ->
 ###
 class Group
-  constructor: (@bot,@gid)->
+  constructor: (@bot, @gid)->
   send: (content , callback)->
-    @bot.send_message_to_group  @gid , content , (ret,e)->
-        callback(ret,e) if callback
+    @bot.send_message_to_group  @gid, content, (ret,e)->
+        callback(ret, e) if callback
 
   on_message: (@msg_cb)->
   dispatch: (content ,send, robot, message)->
     # log.debug 'dispatch',params[0],@msg_cb
     if message.from_gid == @gid and @msg_cb
-        @msg_cb(content ,send, robot, message)
+        @msg_cb(content, send, robot, message)
 
 
 module.exports = QQBot

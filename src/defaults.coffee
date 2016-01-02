@@ -20,7 +20,7 @@ exports.data = (key,value)->
         defaults
 
 exports.save = ->
-    fs.writeFileSync path ,  JSON.stringify defaults
+    fs.writeFileSync path,  JSON.stringify defaults
 
 read = exports.read = ->
     try

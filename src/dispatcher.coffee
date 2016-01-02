@@ -28,7 +28,7 @@ class Dispatcher extends EventEmitter
           obj[method](params...)
       catch error
         log.error error
-      
+
 
     ###
     针对 对象的方法
@@ -40,11 +40,11 @@ class Dispatcher extends EventEmitter
         @listeners.push listener
       else
         @obj_listeners.push listener
-    
+
     # 注销插件
     stop_plugin: -> func(@robot) for func in @stop_funcs
-      
-    
+
+
     # 重新加载插件
     reload_plugin:->
       @stop_plugin()

@@ -7,7 +7,7 @@
 
 
 log       = new (require 'log')('debug')
-auth      = require "./src/qqauth"
+auth      = require "./src/qqauth-qrcode"
 api       = require "./src/qqapi"
 QQBot     = require "./src/qqbot"
 defaults  = require './src/defaults'
@@ -40,20 +40,27 @@ get_tokens = (isneedlogin, options,callback)->
 # 获取好友，群，群成员信息，然后进入守护模式
 # TODO: 获取信息 + 守护模式 同步状态
 run = ->
-  "start qqbot..."
+  "starting qqbot..."
   params = process.argv.slice(-1)[0] or ''
   isneedlogin = params.trim() isnt 'nologin'
   get_tokens isneedlogin , config , (cookies,auth_info)->
     bot = new QQBot(cookies,auth_info,config)
-    
-    # if config.keepalive 
+
+    # if config.keepalive
     bot.on_die -> run() if isneedlogin
-      
+
     bot.update_all_members (ret)->
-      unless ret
-        log.error "获取信息失败"
-        process.exit(1)
-      log.info "Entering runloop, Enjoy!"
-      bot.runloop()
+      if ret
+        log.info("Entering runloop, Enjoy!")
+        bot.runloop()
+      else
+        log.error("获取信息失败，再次尝试")
+        bot.update_all_members (ret) ->
+        if ret
+          log.info("Entering runloop, Enjoy!")
+          bot.runloop()
+        else
+          log.error("获取信息失败，请重新运行")
+          process.exit(1)
 
 run()

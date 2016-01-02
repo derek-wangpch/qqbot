@@ -1,6 +1,7 @@
 # 剥离出来的 HttpClient ，目前仅适合 qqapi 使用
 # 返回值：已经解析的json
 
+_ = require('underscore')
 https = require "https"
 http  = require 'http'
 querystring  = require 'querystring'
@@ -8,13 +9,94 @@ URL  = require('url')
 jsons = JSON.stringify
 
 
-
-
 # 设置全局cookie
 all_cookies = []
+
+get_cookies = ->
+  all_cookies
+
+get_cookies_string = ->
+  cookie_map = {}
+  all_cookies.forEach((ck)->
+    v = ck.split(' ')[0]
+    kv = v.trim().split('=')
+    if (kv[1] != ';')
+      cookie_map[kv[0]] = kv[1]
+  )
+  cks = []
+  cks.push(k + '=' + value) for k, value of cookie_map
+  cks.join(' ')
+
+update_cookies = (cks) ->
+  all_cookies = _.union(all_cookies, cks) if cks
+
 global_cookies = (cookie)->
-    all_cookies = cookie if cookie
-    return all_cookies
+    update_cookies(cookie) if cookie
+    return get_cookies()
+
+
+url_get = (url_or_options, callback, pre_callback) ->
+  http_or_https = http
+
+  if (typeof url_or_options is 'string' and url_or_options.indexOf('https:') is 0) or (typeof url_or_options is 'object' and url_or_options.protocol is 'https:')
+    http_or_https = https
+    if process.env.DEBUG
+      console.log url_or_options
+
+  http_or_https.get(url_or_options, (resp) ->
+    pre_callback(resp) if pre_callback?
+    update_cookies resp.headers['set-cookie']
+    res = resp
+    body = ''
+    resp.on 'data', (chunk) ->
+      body += chunk
+    resp.on 'end', ->
+      if process.env.DEBUG
+        console.log(resp.statusCode)
+        console.log(resp.headers)
+        console.log(body)
+      callback 0, res, body
+  ).on('error', (e) ->
+    console.log(e)
+  )
+
+
+url_post = (options, form, callback) ->
+  http_or_https = http
+  if (typeof url_or_options is 'string' and url_or_options.indexOf('https:') is 0) or (typeof url_or_options is 'object' and url_or_options.protocol is 'https:')
+    http_or_https = https
+    if process.env.DEBUG
+      console.log url_or_options
+
+  postData = querystring.stringify form
+
+  if typeof options.headers isnt 'object'
+    options.headers = {}
+  options.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
+  options.headers['Content-Length'] = Buffer.byteLength(postData)
+  options.headers['Cookie'] = get_cookies_string()
+  options.headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:27.0) Gecko/20100101 Firefox/27.0'
+
+  if process.env.DEBUG
+    console.log options.headers
+    console.log postData
+
+  req = http_or_https.request(options, (resp) ->
+    res = resp
+    body = ''
+    resp.on 'data', (chunk) ->
+      body += chunk
+
+    resp.on 'end', ->
+      if process.env.DEBUG
+        console.log resp.statusCode
+        console.log resp.headers
+        console.log body
+      callback 0, res, body
+  ).on 'error', (e) ->
+    console.log e
+  req.write postData
+  req.end()
 
 # options url:url
 #         method: GET/POST
@@ -38,8 +120,9 @@ http_request = (options , params , callback) ->
       append = if aurl.query then '&' else '?'
       options.path += append + query
 
-    options.headers['Cookie'] = all_cookies
-    options.headers['Referer'] = 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3'
+    options.headers['Cookie'] = get_cookies_string()
+    options.headers['Referer'] = 'http://d1.web2.qq.com/proxy.html?v=20151105001&callback=1&id=2'
+    options.headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36';
 
     req = client.request options, (resp) ->
       if options.debug
@@ -79,15 +162,20 @@ http_get  = (args...) ->
   options =
     method : 'GET'
     url    : url
-  http_request( options , params , callback)
+  http_request options, params, callback
 
 http_post = (options , body, callback) ->
     options.method = 'POST'
-    http_request( options , body , callback)
+    http_request options, body, callback
 
 # 导出方法
 module.exports =
+    get_cookies: get_cookies
+    update_cookies: update_cookies
+    get_cookies_string: get_cookies_string
     global_cookies: global_cookies
     request: http_request
     get:     http_get
     post:    http_post
+    url_get: url_get
+    url_post: url_post

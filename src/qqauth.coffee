@@ -21,7 +21,7 @@ exports.cookies = (cookies)->
 
 # 是否需要 验证码
 # @param qq
-# @param callback -> [是否需要验证码 , token , bits ]
+# @param callback -> [是否需要验证码 , token , bits]
 exports.check_qq_verify = (qq, callback) ->
   # TODO: random -> r
   options =
