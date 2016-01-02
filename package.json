@@ -25,6 +25,7 @@
   },
 
   "dependencies": {
+    "request": "*",
     "log": ">= 1.4.0",
     "js-yaml" : ">= 3.0.0",
     "underscore": "^1.8.3"
