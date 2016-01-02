@@ -1,19 +1,16 @@
-QQBot
+Hubot QQ Adapter
 ------
-A Hubot adapter for QQ! And also A independence robot lives on the real world.  
-FYI: QQ is a instant messaging service widely used in china provided by Tencent.  
+A hubot adapter for QQ!
+由于源项目[qqbot](https://github.com/xhan/qqbot)不支持手机二维码扫描登录，本项目加入了[SmartQQ-Bot](https://github.com/floatinghotpot/qqbot)的二维码扫描登录，同时仍保留源项目的coffeescript实现。由于目前看来源项目已经不再更新和merge pull rquest，本项目暂时以fork的方式存在。
 
 基于[WebQQ协议](https://github.com/xhan/qqbot/blob/master/protocol.md)的QQ机器人。命令行工具，由不可思议的CoffeeScript提供支持。 
 
->DEMO 调戏用(测试和交流)QQ群：346167134
-
-功能主治 Features
+功能 Features
 -----
-* :muscle:  登录和验证码支持
-* :muscle:  支持好友，群，讨论组的接入
-* :muscle:  插件化，目前支持消息的派发
-* :muscle:  可作为hubot adapter使用
-* :muscle:  提供HTTP API支持（比如群通知什么的都能做哦）
+* 手机QQ二维码扫描登录
+* 支持好友，群，讨论组的接入
+* 作为hubot adapter使用
+* 提供HTTP API支持（比如群通知什么的都能做哦）
 
 你可以用TA来  
 
@@ -47,9 +44,6 @@ On LINUX or OSX use `export VARIABLE=VALUE` to set environment variables.
 * 配置一份你自己的 `config.yaml`
 * 执行 `./main.coffee` 让你的机器人躁起来~
 
-部署
------
-> 部署环境下请确保你的机器人是不需要**验证码**登录的，否则可能会无法长时间在线  
 
 我常用的命令 `./main.coffee nologin &>> tmp/dev.log &` , 也可以使用进程管理工具比如 `pm2` 更省心
 
@@ -60,17 +54,16 @@ TODO GET http://localhost:port/stdin?token=(token)&value=(value)
 
 改动
 ----
-https://github.com/xhan/qqbot/blob/master/CHANGELOG.md
+https://github.com/derek-wangpch/qqbot/blob/master/CHANGELOG.md
 
 资料
 ----
-* WebQQ协议     https://github.com/xhan/qqbot/blob/master/protocol.md
+* WebQQ协议     https://github.com/derek-wangpch/qqbot/blob/master/protocol.md
 * Java版的另一个 http://webqq-core.googlecode.com/
 
 TODO
 ---
-* 群成员拉取失败问题跟踪
-* 用户信息,qq号等
-* 机器人响应前缀
+* 代码整理
+* 做为一个单独的npm包上线
 * 图片发送支持
 
