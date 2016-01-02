@@ -67,3 +67,8 @@ TODO
 * 做为一个单独的npm包上线
 * 图片发送支持
 
+Credit
+---
+* QQBot 主要由 [xhan](https://github.com/xhan) 从 2013年12月开始，陆陆续续实现绝大部分功能。
+* [Raymond Xie](https://github.com/floatinghotpot) 于 2015年10月 增加了 手机QQ二维码扫描认证登陆。
+
