@@ -4,8 +4,8 @@
  init(robot)
  received(content,send,robot,message)
  stop(robot)
- 
- 1.直接使用 
+
+ 1.直接使用
  module.exports = func 为快捷隐式调用 received 方法
  2.或
  module.exports = {
@@ -13,8 +13,8 @@
    received:  received_func   # 接受消息
    stop:      init_func       # 停止插件（比如端口占用）
  }
- 
- 
+
+
 ###
 
 HELP_INFO = """
@@ -62,15 +62,15 @@ module.exports = (content ,send, robot, message)->
 
   if ret = content.match /^echo (.*)/i
     send ret[1]
-      
+
   if content.match /^uptime$/i
-    secs  = process.uptime()    
+    secs  = process.uptime()
     [aday,ahour]  = [86400 ,3600]
     [day,hour,minute,second] = [secs/ aday,secs%aday/ ahour,secs%ahour/ 60,secs%60].map (i)-> parseInt(i)
     t = (i)-> "0#{i}"[-2..] # 让时间更漂亮
     memory = process.memoryUsage().rss / 1024 / 1024
     send "up #{day} days, #{t hour}:#{t minute}:#{t second} | mem: #{memory.toFixed(1)}M"
-    
+
   if content.match /^roll$/i
     # TODO:who? , need a reply method
     send Math.round( Math.random() * 100)

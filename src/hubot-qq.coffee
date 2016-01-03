@@ -4,6 +4,7 @@ auth = require "../src/qqauth-qrcode"
 api  = require "../src/qqapi"
 QQBot= require "../src/qqbot"
 defaults = require "../src/defaults"
+config    = require '../config'
 
 class QQHubotAdapter extends Adapter
 
@@ -21,12 +22,13 @@ class QQHubotAdapter extends Adapter
     self = @
 
     options =
-      account:   process.env.HUBOT_QQ_ID or   2769546520
-      password:  process.env.HUBOT_QQ_PASS
-      groupname: process.env.HUBOT_QQ_GROUP or 'qqbot群'
-      port:      process.env.HUBOT_QQ_IMGPORT or 3000
-      host:      process.env.HUBOT_QQ_IMGHOST or 'localhost'
-      plugins:   ['help']
+      account:   process.env.HUBOT_QQ_ID or config.account
+      password:  process.env.HUBOT_QQ_PASS or config.password
+      groupname: process.env.HUBOT_QQ_GROUP or config.qq_group
+      port:      process.env.HUBOT_QQ_IMGPORT or config.port
+      host:      process.env.HUBOT_QQ_IMGHOST or config.host
+      # plugins:   ['help']
+      plugins: []
 
     skip_login = process.env.HUBOT_QQ_SKIP_LOGIN is 'true'
 
@@ -35,7 +37,7 @@ class QQHubotAdapter extends Adapter
       process.exit(1)
 
     # TODO: login failed callback
-    @login_qq skip_login,options, (cookies,auth_info)=>
+    @login_qq skip_login, options, (cookies,auth_info)=>
       @qqbot = new QQBot(cookies, auth_info, options)
       @qqbot.update_buddy_list (ret,error)=>
           @robot.logger.info '√ Buddy list fetched' if ret
@@ -63,7 +65,7 @@ class QQHubotAdapter extends Adapter
       @robot.logger.info "skip login", auth_info
       callback(cookies, auth_info )
     else
-      auth.login options , (cookies,auth_info)=>
+      auth.login options, (cookies,auth_info)=>
         if process.env.HUBOT_QQ_DEBUG?
           defaults.data 'qq-cookies', cookies
           defaults.data 'qq-auth'   , auth_info
