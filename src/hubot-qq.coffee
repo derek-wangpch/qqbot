@@ -27,8 +27,9 @@ class QQHubotAdapter extends Adapter
       groupname: process.env.HUBOT_QQ_GROUP or config.qq_group
       port:      process.env.HUBOT_QQ_IMGPORT or config.port
       host:      process.env.HUBOT_QQ_IMGHOST or config.host
-      # plugins:   ['help']
-      plugins: []
+      api_port:  config.api_port or 3200
+      api_token: config.api_token or ''
+      plugins:   config.plugins or []
 
     skip_login = process.env.HUBOT_QQ_SKIP_LOGIN is 'true'
 
@@ -47,11 +48,11 @@ class QQHubotAdapter extends Adapter
         @qqbot.runloop()
         @emit "connected"
 
-        @group.on_message (content ,send, robot, message)=>
+        @group.on_message (content, send, robot, message)=>
 
             @robot.logger.info "#{message.from_user.nick} : #{content}"
             # uin changed every-time
-            user = @robot.brain.userForId message.from_uin , name:message.from_user.nick , room:options.groupname
+            user = @robot.brain.userForId message.from_uin, name:message.from_user.nick, room:options.groupname
             @receive new TextMessage user, content, message.uid
 
 
@@ -63,7 +64,7 @@ class QQHubotAdapter extends Adapter
       cookies = defaults.data 'qq-cookies'
       auth_info = defaults.data 'qq-auth'
       @robot.logger.info "skip login", auth_info
-      callback(cookies, auth_info )
+      callback(cookies, auth_info)
     else
       auth.login options, (cookies,auth_info)=>
         if process.env.HUBOT_QQ_DEBUG?
