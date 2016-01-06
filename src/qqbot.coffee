@@ -60,6 +60,7 @@ class QQBot
   # 获取群用户信息
   get_user_ingroup: (uin, gid)->
     info = @groupmember_info[gid]
+    return null if !info
     users = info.minfo.filter (item)-> item.uin == uin
     users.pop()
 
@@ -518,12 +519,12 @@ class QQBot
     log.info 'fetching group list'
     @update_group_list (ret, e) =>
       log.info '√ group list fetched'
-
       log.info "fetching groupmember #{name}"
       @update_group_member {name:name} ,(ret,error)=>
         log.info '√ group memeber fetched'
 
         groupinfo = @get_group {name:name}
+        @listeningGid = groupinfo.gid
         group = new Group(@, groupinfo.gid)
         @dispatcher.add_listener [group,"dispatch"]
         callback group
