@@ -148,6 +148,8 @@ class QQBot
   # @callback (ret:bool , error)
   update_group_member: (options, callback)->
     group = if options.code then options else @get_group(options)
+    if !group and callback
+      callback false, null
     @api.get_group_member group.code , @auth , (ret,e)=>
         if ret.retcode == 0
           @save_group_member(group,ret.result)
