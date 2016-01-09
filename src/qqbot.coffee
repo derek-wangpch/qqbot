@@ -405,11 +405,11 @@ class QQBot
   ###
   relogin: (callback)->
     log.info "relogin..."
-    auth.cookies @cookies
     self = @
 
     auth.auto_login self.auth.ptwebqq, (cookies, auth_info) ->
       self.auth = auth_info
+      api.cookies cookies
       log.debug 'after', self.auth
       callback(true) if callback
 
