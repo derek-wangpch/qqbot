@@ -460,6 +460,11 @@ class QQBot
       msg.group_code = value.group_code
       msg.from_uin = value.send_uin # 这才是用户,group消息中 from_uin 是gid
       msg.from_group = @get_group( {gid:msg.from_gid} )
+
+      if @listeningGid isnt msg.from_gid
+        try log.debug "[其它群组消息]","[#{msg.from_group.name}]:#{msg.content} #{msg.time}"
+        return
+
       msg.from_user  = @get_user_ingroup( msg.from_uin, msg.from_gid )
       # 更新
       @update_group_list unless msg.from_group
