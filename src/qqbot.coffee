@@ -99,7 +99,8 @@ class QQBot
         if callback
           callback false, e
       else
-        if ret.retcode == 0
+        # if ret.retcode == 0
+        if ret.result && ret.result.gnamelist
           @group_info = ret.result
           info = @group_info.gnamelist
           n = info.length
